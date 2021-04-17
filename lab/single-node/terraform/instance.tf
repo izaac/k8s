@@ -32,14 +32,14 @@ resource "aws_instance" "vm_k8slab" {
   # }
 
   tags = {
-    Name = "K8s LAB"
+    Name = "Develop K8s LAB"
   }
 
 }
 
 
 resource "aws_security_group" "allow_all" {
-  name        = "allow_all"
+  name        = "develop-allow_all"
   description = "Allow ALL inbound traffic"
 
   ingress {
@@ -58,6 +58,6 @@ resource "aws_security_group" "allow_all" {
   }
 
   tags = {
-    Name = "K8s LAB"
+    Name = "Develop K8s LAB"
   }
 }
