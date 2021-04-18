@@ -121,47 +121,47 @@
     state: present
     disable_excludes: kubernetes
 
-# - name: Install k8s kubeadm
-#   dnf:
-#     name: kubeadm-1.20.5-0.x86_64
-#     state: present
-#     exclude: kubernetes
+- name: Install k8s kubeadm
+  dnf:
+    name: kubeadm-1.20.5-0.x86_64
+    state: present
+    disable_excludes: kubernetes
 
-# - name: Install k8s kubectl
-#   dnf:
-#     name: kubectl-1.20.5-0.x86_64
-#     state: present
-#     exclude: kubernetes
+- name: Install k8s kubectl
+  dnf:
+    name: kubectl-1.20.5-0.x86_64
+    state: present
+    disable_excludes: kubernetes
 
-# kubeadm-1.20.5-0.x86_64 kubectl-1.20.5-0.x86_64 --disableexcludes=kubernetes
+- name: systemctl kubelet reload and restart
+  systemd:
+    name: kubelet
+    daemon_reload: yes
+    state: restarted
+    enabled: yes
 
-    # sudo systemctl enable --now kubelet
+- name: Add systemd.unified_cgroup_hierarchy=0 line to /etc/default/grub
+  lineinfile:
+    path: /etc/default/grub
+    regexp: '^(GRUB_CMDLINE_LINUX=".*?)( systemd\.unified_cgroup_hierarchy=0)?"$'
+    line: '\1 systemd.unified_cgroup_hierarchy=0"'
+    backrefs: yes
+  register: kernel_result
 
-# - name: add systemd.unified_cgroup_hierarchy=0 line to /etc/default/grub 
-#   register: kernel_result
-#   shell: |
-#     cat<<EOF| sudo bash
-#     grep "systemd.unified_cgroup_hierarchy=0" /etc/default/grub
-#     if [ $? -eq 1 ]     
-#     then                                                                       
-#     sudo grubby --update-kernel=ALL --args="systemd.unified_cgroup_hierarchy=0"
-#     fi
-#     EOF
+- name: Reboot if kernel modified
+  when: kernel_result is changed
+  async: 1
+  poll: 0
+  shell: |
+    sleep 5 && sudo reboot
 
-# - name: Reboot if kernel modified
-#   when: kernel_result is changed
-#   async: 1
-#   poll: 0
-#   shell: |
-#     sleep 5 && sudo reboot
-
-# - name: Wait for the reboot to complete if there was a change.
-#   when: kernel_result is changed
-#   wait_for_connection:
-#     connect_timeout: 20
-#     sleep: 5
-#     delay: 5
-#     timeout: 300
+- name: Wait for the reboot to complete if there was a change.
+  when: kernel_result is changed
+  wait_for_connection:
+    connect_timeout: 20
+    sleep: 5
+    delay: 5
+    timeout: 300
 
 # - name: kubeadm init
 #   shell: |
