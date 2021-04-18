@@ -1,8 +1,9 @@
 ---
-- name: dnf/yum update
-  shell: |
-    sudo dnf update -y
-
+- name: dnf update
+  dnf: 
+    name: "*"
+    state: latest
+    
 # - name: Def CRI-O modules and sysctl
 #   shell: |
 #     cat <<EOF | sudo tee /etc/modules-load.d/crio.conf
@@ -18,37 +19,13 @@
 #     EOF
 #     sudo sysctl --system
 
-- name: copy Def CRI-O modules 
-  copy:
-    src: files/crio.conf
-    dest: /etc/modules-load.d/crio.conf
-    owner: root
-    group: root
-    mode: '0644'
-
-- name: copy sysctl kubernetes-crio.conf modules 
-  copy:
-    src: files/99-kubernetes-cri.conf
-    dest: /etc/sysctl.d/99-kubernetes-cri.conf
-    owner: root
-    group: root
-    mode: '0644'
-
-- name: copy SELINUX file
-  copy:
-    src: files/selinux-config
-    dest: /etc/selinux/config
-    owner: root
-    group: root
-    mode: '0644'
-
-- name: copy k8s repo
-  copy:
-    src: files/kubernetes.repo
-    dest: /etc/yum.repos.d/kubernetes.repo
-    owner: root
-    group: root
-    mode: '0644'
+# - name: copy Def CRI-O modules 
+#   copy:
+#     src: files/crio.conf
+#     dest: /etc/modules-load.d/crio.conf
+#     owner: root
+#     group: root
+#     mode: '0644'
 
 - name: add overlay module
   modprobe:
@@ -60,9 +37,52 @@
     name: br_netfilter
     state: present
 
-- name: sysctl reload
-  shell: |
-    sudo sysctl --system
+# - name: copy sysctl kubernetes-crio.conf modules 
+#   copy:
+#     src: files/99-kubernetes-cri.conf
+#     dest: /etc/sysctl.d/99-kubernetes-cri.conf
+#     owner: root
+#     group: root
+#     mode: '0644'
+
+- name: set net.bridge.bridge-nf-call-iptables
+  sysctl:
+    name: net.bridge.bridge-nf-call-iptables
+    value: '1'
+    state: present
+    reload: yes
+
+- name: set net.ipv4.ip_forward
+  sysctl:
+    name: net.ipv4.ip_forward
+    value: '1'
+    state: present
+    reload: yes
+
+- name: set net.bridge.bridge-nf-call-ip6tables
+  sysctl:
+    name: net.bridge.bridge-nf-call-ip6tables
+    value: '1'
+    state: present
+    reload: yes
+
+- name: disable SELINUX
+  lineinfile:
+    path: /etc/selinux/config
+    regexp: '^SELINUX='
+    line: SELINUX=disabled
+
+- name: copy k8s repo
+  copy:
+    src: files/kubernetes.repo
+    dest: /etc/yum.repos.d/kubernetes.repo
+    owner: root
+    group: root
+    mode: '0644'
+
+# - name: sysctl reload
+#   shell: |
+#     sudo sysctl --system
 
 - name: dnf def module cri-o version
   shell: |
@@ -74,12 +94,24 @@
     export VERSION=1.20
     sudo dnf -y install cri-o
 
-- name: Changing CRIO conmon_cgroup and cgroup crio.conf
-  shell: |
-    sudo sed -i 's/conmon_cgroup = "system.slice"/conmon_cgroup = "pod"/g' /etc/crio/crio.conf
-    sudo sed -i 's/cgroup_manager = "systemd"/cgroup_manager = "cgroupfs"/g' /etc/crio/crio.conf
-    sudo systemctl daemon-reload
-    sudo systemctl enable crio --now
+- name: Changing CRIO conmon_cgroup crio.conf
+  lineinfile:
+    path: /etc/crio/crio.conf
+    regexp: '^conmon_cgrou ='
+    line: conmon_cgroup = "pod"
+
+- name: Changing CRIO cgroup crio.conf
+  lineinfile:
+    path: /etc/crio/crio.conf
+    regexp: '^cgroup_manager ='
+    line: cgroup_manager = "cgroupfs"
+
+- name: systemctl CRIO reload and restart
+  systemd:
+    name: crio
+    daemon_reload: yes
+    state: restarted
+    enabled: yes
 
 - name: Install k8s kubelet
   dnf:
