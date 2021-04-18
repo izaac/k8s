@@ -19,23 +19,29 @@
 #     EOF
 #     sudo sysctl --system
 
-# - name: copy Def CRI-O modules 
-#   copy:
-#     src: files/crio.conf
-#     dest: /etc/modules-load.d/crio.conf
-#     owner: root
-#     group: root
-#     mode: '0644'
+- name: copy Def CRI-O modules 
+  copy:
+    src: files/crio.conf
+    dest: /etc/modules-load.d/crio.conf
+    owner: root
+    group: root
+    mode: '0644'
 
-- name: add overlay module
-  modprobe:
-    name: overlay
-    state: present
+- name: sysctl set and reload without reboot
+  shell: |
+    sudo modprobe overlay
+    sudo modprobe br_netfilter
+    sudo sysctl --system
 
-- name: add br_netfilter module
-  modprobe:
-    name: br_netfilter
-    state: present
+# - name: add overlay module
+#   modprobe:
+#     name: overlay
+#     state: present
+
+# - name: add br_netfilter module
+#   modprobe:
+#     name: br_netfilter
+#     state: present
 
 # - name: copy sysctl kubernetes-crio.conf modules 
 #   copy:
@@ -80,30 +86,26 @@
     group: root
     mode: '0644'
 
-# - name: sysctl reload
-#   shell: |
-#     sudo sysctl --system
-
 - name: dnf def module cri-o version
   shell: |
     export VERSION=1.20
     sudo dnf -y module enable cri-o:$VERSION
 
 - name: dnf install cri-o 
-  shell: |
-    export VERSION=1.20
-    sudo dnf -y install cri-o
+  dnf:
+    name: cri-o
+    state: present
 
 - name: Changing CRIO conmon_cgroup crio.conf
   lineinfile:
     path: /etc/crio/crio.conf
-    regexp: '^conmon_cgrou ='
+    regexp: '^conmon_cgroup = \"system.slice\"'
     line: conmon_cgroup = "pod"
 
 - name: Changing CRIO cgroup crio.conf
   lineinfile:
     path: /etc/crio/crio.conf
-    regexp: '^cgroup_manager ='
+    regexp: '^cgroup_manager = \"systemd\"'
     line: cgroup_manager = "cgroupfs"
 
 - name: systemctl CRIO reload and restart
@@ -117,19 +119,19 @@
   dnf:
     name: kubelet-1.20.5-0.x86_64
     state: present
-    exclude: kubernetes
+    disable_excludes: kubernetes
 
-- name: Install k8s kubeadm
-  dnf:
-    name: kubeadm-1.20.5-0.x86_64
-    state: present
-    exclude: kubernetes
+# - name: Install k8s kubeadm
+#   dnf:
+#     name: kubeadm-1.20.5-0.x86_64
+#     state: present
+#     exclude: kubernetes
 
-- name: Install k8s kubectl
-  dnf:
-    name: kubectl-1.20.5-0.x86_64
-    state: present
-    exclude: kubernetes
+# - name: Install k8s kubectl
+#   dnf:
+#     name: kubectl-1.20.5-0.x86_64
+#     state: present
+#     exclude: kubernetes
 
 # kubeadm-1.20.5-0.x86_64 kubectl-1.20.5-0.x86_64 --disableexcludes=kubernetes
 
