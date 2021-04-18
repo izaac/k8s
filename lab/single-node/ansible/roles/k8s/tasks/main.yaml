@@ -163,15 +163,15 @@
     delay: 5
     timeout: 300
 
-# - name: kubeadm init
-#   shell: |
-#     sudo kubeadm init
+- name: kubeadm init
+  shell: |
+    sudo kubeadm init
 
-# - name: copy k8s config to user fedora
-#   shell: |
-#     sudo mkdir /home/fedora/.kube
-#     sudo cp /etc/kubernetes/admin.conf /home/fedora/.kube/config
-#     sudo chown -R fedora: /home/fedora/.kube
+- name: copy k8s config to user fedora
+  shell: |
+    sudo mkdir /home/fedora/.kube
+    sudo cp /etc/kubernetes/admin.conf /home/fedora/.kube/config
+    sudo chown -R fedora: /home/fedora/.kube
 
 # - name: untaint master node
 #   shell: |
