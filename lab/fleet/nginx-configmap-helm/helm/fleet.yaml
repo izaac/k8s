@@ -5,6 +5,6 @@ helm:
   repo: ""
   version: ""
   values:
-    replicas: 3
+    replicas: 4
 dependsOn:
   - name: test2-lab-fleet-nginx-configmap-helm-manifests
